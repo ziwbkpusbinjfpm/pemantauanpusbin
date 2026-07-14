@@ -85,10 +85,43 @@
     font-family:'Inter',sans-serif; font-size:13px; background:#fff;
   }
   .filters select.f{
-    padding:10px 14px; border-radius:10px; border:1px solid var(--line); background:#fff; color:var(--ink);
+    padding:10px 32px 10px 14px; border-radius:10px; border:1px solid var(--line); background:#fff; color:var(--ink);
     font-size:13px; font-family:'Inter',sans-serif;
     background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0 5 6 10 0' fill='none' stroke='%235B6270' stroke-width='1.5'/></svg>");
-    background-repeat:no-repeat; background-position:right 12px center; appearance:none; padding-right:32px;
+    background-repeat:no-repeat; background-position:right 12px center; appearance:none;
+    max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .filters select.f#komponenFilter{ max-width:240px; }
+  .print-btn{
+    padding:10px 16px; border-radius:10px; border:1px solid var(--navy); background:var(--navy); color:#fff;
+    font-family:'Inter',sans-serif; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;
+  }
+  .print-btn:hover{ background:#0F2A4A; }
+
+  .print-only{ display:none; }
+
+  @media print{
+    body{ background:#fff; }
+    .app-view{ display:none !important; }
+    .print-only{
+      display:block !important; background:#fff; padding:0; margin:0; color:#1A1D22;
+      font-family:'Inter',sans-serif;
+    }
+    .print-title{ font-family:'Lexend',sans-serif; font-size:16px; text-align:center; margin:0 0 6px; }
+    .print-sub{ font-family:'Lexend',sans-serif; font-size:13px; text-align:center; margin:0 0 4px; font-weight:600; }
+    .print-kpis{ display:flex; gap:10px; margin:16px 0 14px; }
+    .print-kpis .k{ flex:1; border:1px solid #ddd; border-radius:8px; padding:8px 10px; }
+    .print-kpis .k .kl{ font-size:9px; text-transform:uppercase; letter-spacing:.05em; color:#666; font-weight:700; }
+    .print-kpis .k .kv{ font-size:16px; font-weight:700; margin-top:2px; }
+    .print-table{ width:100%; border-collapse:collapse; font-size:9.5px; margin-top:6px; }
+    .print-table th, .print-table td{ border:1px solid #ccc; padding:5px 6px; text-align:left; vertical-align:top; }
+    .print-table th{ background:#f2f2ee; font-family:'Lexend',sans-serif; font-size:8.5px; text-transform:uppercase; }
+    .signature-row{ display:flex; gap:28px; margin-top:32px; flex-wrap:wrap; }
+    .signature-block{ font-size:12px; flex:1 1 200px; min-width:200px; page-break-inside:avoid; }
+    .signature-block .sign-space{ height:60px; }
+    .signature-block .ttd-note{ color:#888; font-style:italic; margin:0; }
+    .signature-block .ttd-name{ font-weight:700; margin:2px 0 0; }
+    @page{ size:A4 landscape; margin:14mm 12mm; }
   }
   .result-count{font-size:12px; color:var(--ink-soft); margin:10px 2px 0;}
 
@@ -140,13 +173,13 @@
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="wrap app-view">
 
   <header class="top">
     <div>
       <p class="eyebrow">Pusbin JFPM · Rencana Kerja &amp; Target Prioritas 2026</p>
       <h1>Dashboard Pemantauan Pembangunan<br>Zona Integritas Menuju WBK</h1>
-      <p class="desc">Memantau progres realisasi seluruh kegiatan prioritas pada 6 pengungkit ZI-WBK, dari Mei 2026 sampai Juli 2027.</p>
+      <p class="desc"></p>
     </div>
     <div>
       <div class="month-select">
@@ -189,6 +222,7 @@
       <option value="On Process">On Process</option>
       <option value="Belum">Belum</option>
     </select>
+    <button class="print-btn" id="btnPrintPdf" type="button">🖨️ Cetak Laporan PDF</button>
   </div>
   <p class="result-count" id="resultCount"></p>
 
@@ -216,6 +250,32 @@
 
 </div>
 
+<div class="print-only" id="printSection">
+  <h1 class="print-title">LAPORAN PROGRES PROGRAM KERJA ZI WBK PUSBIN JFPM</h1>
+  <h2 class="print-sub" id="printTimLabel">TIM PENGUNGKIT …</h2>
+  <h3 class="print-sub" id="printBulanLabel">BULAN …</h3>
+
+  <div class="print-kpis" id="printKpis"></div>
+
+  <table class="print-table">
+    <thead>
+      <tr>
+        <th style="width:32px;">No</th>
+        <th style="width:130px;">Pengungkit / Komponen</th>
+        <th>Kegiatan</th>
+        <th style="width:75px;">Waktu</th>
+        <th style="width:65px;">Status</th>
+        <th style="width:100px;">Progres Tindak Lanjut Rekomendasi</th>
+        <th style="width:130px;">Keterangan / Kendala</th>
+        <th style="width:130px;">Rekomendasi</th>
+      </tr>
+    </thead>
+    <tbody id="printTableBody"></tbody>
+  </table>
+
+  <div class="signature-row" id="printSignatures"></div>
+</div>
+
 <script>
 // ====== KONFIGURASI GOOGLE SHEETS ======
 // 1. Ganti SPREADSHEET_ID di bawah ini dengan ID spreadsheet Anda
@@ -239,6 +299,7 @@ let currentPeng = "";
 let doughnutChart, barChart;
 
 let PENG_LIST = [];
+let KETUA_TIM_MAP = {};
 const PENG_SHORT = {
   "Manajemen Perubahan":"Manajemen\nPerubahan",
   "Penataan Tatalaksana":"Penataan\nTatalaksana",
@@ -357,9 +418,15 @@ function updateKomponenFilter(){
   const prev = kf.value;
   kf.innerHTML = '<option value="">Semua Komponen</option>' + komponenSet.map(k=>`<option value="${k}">${k}</option>`).join('');
   if(komponenSet.includes(prev)) kf.value = prev;
+  syncSelectTitle(kf);
 }
 
-function renderTable(){
+function syncSelectTitle(el){
+  const opt = el.options[el.selectedIndex];
+  el.title = opt ? opt.text : '';
+}
+
+function getFilteredRows(){
   const search = document.getElementById('searchBox').value.toLowerCase();
   const pengF = document.getElementById('pengFilter').value;
   const aspekF = document.getElementById('aspekFilter').value;
@@ -367,7 +434,7 @@ function renderTable(){
   const picF = document.getElementById('picFilter').value;
   const statusF = document.getElementById('statusFilter').value;
 
-  const rows = DATA.filter(d=>{
+  return DATA.filter(d=>{
     if(search && !d.keg.toLowerCase().includes(search)) return false;
     if(pengF && d.peng !== pengF) return false;
     if(aspekF && d.aspek !== aspekF) return false;
@@ -376,6 +443,10 @@ function renderTable(){
     if(statusF){ const cur = statusAt(d,currentMonthIdx); if(cur !== statusF) return false; }
     return true;
   });
+}
+
+function renderTable(){
+  const rows = getFilteredRows();
 
   document.getElementById('resultCount').textContent = `Menampilkan ${rows.length} dari ${DATA.length} kegiatan`;
 
@@ -428,7 +499,7 @@ async function resolveSheetName(){
 
 async function loadDataFromSheet(){
   const sheetName = await resolveSheetName();
-  const range = `${sheetName}!A5:BQ`;
+  const range = `${sheetName}!A5:CB`;
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(range)}?key=${API_KEY}`;
   const res = await fetch(url);
   if(!res.ok){
@@ -463,6 +534,7 @@ async function loadDataFromSheet(){
       waktu: r[6]  || '',
       pic:   r[9]  || '',
       target: r[10] || null,
+      ketuaTim: (r[72] && String(r[72]).trim()) || '',
       // Tiap bulan = blok 4 kolom (urutan baru): [Progres Tindak Lanjut Rekomendasi, Progres Rencana Kerja, Keterangan/Kendala, Rekomendasi]
       s:      MONTH_COLS.map(idx => (r[idx+1] && String(r[idx+1]).trim()) || 'Belum'),
       ket:    MONTH_COLS.map(idx => (r[idx+2] && String(r[idx+2]).trim()) || ''),
@@ -472,6 +544,8 @@ async function loadDataFromSheet(){
   }
 
   PENG_LIST = [...new Set(DATA.map(d=>d.peng))];
+  KETUA_TIM_MAP = {};
+  DATA.forEach(d=>{ if(d.ketuaTim && !KETUA_TIM_MAP[d.peng]) KETUA_TIM_MAP[d.peng] = d.ketuaTim; });
 }
 
 function showLoading(){
@@ -488,7 +562,59 @@ function attachEvents(){
   document.getElementById('nextMonth').addEventListener('click', ()=>{ if(currentMonthIdx<MONTHS.length-1){ currentMonthIdx++; document.getElementById('monthPicker').value=currentMonthIdx; refreshAll(); }});
   document.getElementById('searchBox').addEventListener('input', renderTable);
   document.getElementById('pengFilter').addEventListener('change', e=>{ currentPeng = e.target.value; refreshAll(); });
-  ['komponenFilter','picFilter','statusFilter','aspekFilter'].forEach(id=>document.getElementById(id).addEventListener('change', renderTable));
+  function preparePrintView(){
+    const s = computeStats(currentMonthIdx, currentPeng);
+    const rows = getFilteredRows();
+
+    document.getElementById('printTimLabel').textContent = `TIM PENGUNGKIT ${currentPeng ? currentPeng.toUpperCase() : 'SELURUH PENGUNGKIT'}`;
+    document.getElementById('printBulanLabel').textContent = `BULAN ${MONTHS[currentMonthIdx].toUpperCase()}`;
+
+    document.getElementById('printKpis').innerHTML = `
+      <div class="k"><div class="kl">Total Kegiatan</div><div class="kv">${s.total}</div></div>
+      <div class="k"><div class="kl">Selesai</div><div class="kv">${s.selesai}</div></div>
+      <div class="k"><div class="kl">On Process</div><div class="kv">${s.proses}</div></div>
+      <div class="k"><div class="kl">Belum</div><div class="kv">${s.belum}</div></div>
+      <div class="k"><div class="kl">% Capaian</div><div class="kv">${s.pct}%</div></div>
+    `;
+
+    document.getElementById('printTableBody').innerHTML = rows.map(d=>{
+      const cur = statusAt(d,currentMonthIdx);
+      const ket = d.ket[currentMonthIdx];
+      const rek = d.rek[currentMonthIdx];
+      const tindak = d.tindak[currentMonthIdx];
+      return `<tr>
+        <td>${d.no ?? ''}</td>
+        <td>${d.kode||''} — ${d.komp}</td>
+        <td>${d.keg}</td>
+        <td>${d.waktu}</td>
+        <td>${cur}</td>
+        <td>${tindak}</td>
+        <td>${ket ? ket : '—'}</td>
+        <td>${rek ? rek : '—'}</td>
+      </tr>`;
+    }).join('') || `<tr><td colspan="8" style="text-align:center;">Tidak ada kegiatan yang cocok dengan filter.</td></tr>`;
+
+    const pengsInView = [...new Set(rows.map(d=>d.peng))];
+    document.getElementById('printSignatures').innerHTML = (pengsInView.length ? pengsInView : (currentPeng ? [currentPeng] : [])).map(p=>{
+      const ketua = KETUA_TIM_MAP[p] || '';
+      return `<div class="signature-block">
+        <p>Ketua Tim Pengungkit ${p}</p>
+        <div class="sign-space"></div>
+        <p class="ttd-note">Ditandatangani secara elektronik</p>
+        <p class="ttd-name">${ketua || '(nama belum diisi di sheet)'}</p>
+      </div>`;
+    }).join('') || `<div class="signature-block"><p>Ketua Tim Pengungkit</p><div class="sign-space"></div><p class="ttd-note">Ditandatangani secara elektronik</p><p class="ttd-name">(nama di sheet)</p></div>`;
+  }
+
+  document.getElementById('btnPrintPdf').addEventListener('click', ()=>{
+    preparePrintView();
+    window.print();
+  });
+
+  ['komponenFilter','picFilter','statusFilter','aspekFilter'].forEach(id=>{
+    const el = document.getElementById(id);
+    el.addEventListener('change', e=>{ syncSelectTitle(e.target); renderTable(); });
+  });
 }
 
 async function init(){
