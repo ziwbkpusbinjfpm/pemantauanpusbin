@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Pemantauan ZI-WBK — Pusbin JFPM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --navy:#152238; --navy-2:#1E3358;
+    --gold:#C9A227; --gold-soft:#F3E7BE;
+    --green:#2E8B57; --green-soft:#E4F3EA;
+    --amber:#B9862F; --amber-soft:#F6EDDD;
+    --red:#B23A3A; --red-soft:#F7E4E1;
+    --bg:#F6F6F3; --panel:#FFFFFF; --line:#E6E4DC;
+    --ink:#171B22; --ink-soft:#5B6270; --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);}
+  .wrap{max-width:1240px;margin:0 auto;padding:32px 24px 64px;}
+
+  header.top{
+    background:linear-gradient(135deg,var(--navy) 0%,var(--navy-2) 100%);
+    border-radius:var(--radius); padding:28px 32px; color:#fff;
+    display:flex; justify-content:space-between; align-items:flex-start; gap:24px; flex-wrap:wrap;
+    position:relative; overflow:hidden;
+  }
+  header.top::after{
+    content:""; position:absolute; right:-60px; top:-60px; width:220px;height:220px;border-radius:50%;
+    background:radial-gradient(circle, rgba(201,162,39,0.35) 0%, rgba(201,162,39,0) 70%);
+  }
+  .eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:11px;font-weight:600;color:var(--gold);margin:0 0 8px;}
+  h1{font-family:'Lexend',sans-serif;font-size:25px;font-weight:700;margin:0 0 6px;line-height:1.28;}
+  header.top p.desc{margin:0;color:#C6CEDD;font-size:13.5px;max-width:560px;}
+  .month-select{position:relative; z-index:2; display:flex; flex-direction:column; gap:6px; align-items:flex-end;}
+  .month-select label{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#C6CEDD;}
+  select{
+    appearance:none; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.25);
+    color:#fff; padding:10px 36px 10px 14px; border-radius:10px; font-family:'IBM Plex Mono',monospace;
+    font-size:13px; font-weight:600; cursor:pointer;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0 5 6 10 0' fill='none' stroke='%23C6CEDD' stroke-width='1.5'/></svg>");
+    background-repeat:no-repeat; background-position:right 14px center;
+  }
+  .month-nav{display:flex; gap:6px; align-items:center; position:relative; z-index:2;}
+  .month-nav button{
+    background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.25); color:#fff;
+    width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px;
+  }
+  .month-nav button:hover{background:rgba(255,255,255,0.2);}
+
+  .peng-strip{display:flex; gap:8px; margin-top:22px; position:relative; z-index:2; flex-wrap:wrap;}
+  .peng-node{
+    flex:1; min-width:140px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.14);
+    border-radius:10px; padding:10px 12px; cursor:pointer; transition:.15s;
+  }
+  .peng-node:hover{background:rgba(255,255,255,0.12);}
+  .peng-node.active{background:rgba(201,162,39,0.18); border-color:var(--gold);}
+  .peng-node .pn-label{font-size:10.5px;letter-spacing:.02em;color:#B9C2D2; line-height:1.3; min-height:26px;}
+  .peng-node.active .pn-label{color:var(--gold-soft);}
+  .peng-node .pn-bar{height:5px;border-radius:3px;background:rgba(255,255,255,0.15);margin-top:8px;overflow:hidden;}
+  .peng-node .pn-fill{height:100%;background:var(--gold);border-radius:3px;}
+  .peng-node .pn-pct{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;margin-top:6px;color:#fff;}
+
+  .kpis{display:grid; grid-template-columns:repeat(5,1fr); gap:16px; margin-top:20px;}
+  .kpi{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:20px 22px;}
+  .kpi .k-label{font-size:12px;color:var(--ink-soft);font-weight:600;text-transform:uppercase;letter-spacing:.06em;}
+  .kpi .k-value{font-family:'Lexend',sans-serif;font-size:30px; font-weight:700; margin-top:6px;}
+  .kpi.total .k-value{color:var(--navy);}
+  .kpi.done .k-value{color:var(--green);}
+  .kpi.proses .k-value{color:var(--amber);}
+  .kpi.pending .k-value{color:var(--red);}
+  .kpi.pct .k-value{color:var(--navy);}
+  .kpi .k-sub{font-size:12px;color:var(--ink-soft);margin-top:4px;}
+
+  .charts{display:grid; grid-template-columns: 1fr 1.5fr; gap:16px; margin-top:16px;}
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:22px;}
+  .panel h3{font-family:'Lexend',sans-serif; font-size:15px; margin:0 0 4px; color:var(--navy);}
+  .panel .sub{font-size:12px;color:var(--ink-soft);margin:0 0 16px;}
+
+  .filters{display:flex; gap:10px; margin-top:24px; flex-wrap:wrap; align-items:center;}
+  .filters input[type=text]{
+    flex:1; min-width:180px; padding:10px 14px; border-radius:10px; border:1px solid var(--line);
+    font-family:'Inter',sans-serif; font-size:13px; background:#fff;
+  }
+  .filters select.f{
+    padding:10px 14px; border-radius:10px; border:1px solid var(--line); background:#fff; color:var(--ink);
+    font-size:13px; font-family:'Inter',sans-serif;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0 5 6 10 0' fill='none' stroke='%235B6270' stroke-width='1.5'/></svg>");
+    background-repeat:no-repeat; background-position:right 12px center; appearance:none; padding-right:32px;
+  }
+  .result-count{font-size:12px; color:var(--ink-soft); margin:10px 2px 0;}
+
+  .table-wrap{margin-top:8px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:auto; max-height:640px;}
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  thead th{
+    text-align:left; font-family:'Lexend',sans-serif; font-weight:600; font-size:10.5px;
+    text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft);
+    padding:12px 14px; border-bottom:1px solid var(--line); background:#FBFBF9; position:sticky; top:0; z-index:1;
+  }
+  tbody td{padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top; color:var(--ink);}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:#FBFAF5;}
+  .no-col{font-family:'IBM Plex Mono',monospace; color:var(--ink-soft); font-size:11.5px;}
+  .kegiatan-col{max-width:300px; line-height:1.4;}
+  .badge{display:inline-block; padding:4px 10px; border-radius:20px; font-size:10.5px; font-weight:600; white-space:nowrap;}
+  .badge.selesai{background:var(--green-soft); color:var(--green);}
+  .badge.proses{background:var(--amber-soft); color:var(--amber);}
+  .badge.belum{background:var(--red-soft); color:var(--red);}
+  .badge.tidakada{background:#EEECE6; color:var(--ink-soft);}
+  .ket-col, .rek-col, .tindak-col{max-width:190px; line-height:1.4; color:var(--ink-soft); font-size:12px;}
+  .ket-col .empty, .rek-col .empty{color:#B9BEC6; font-style:italic;}
+  .komponen-tag{font-size:10.5px; color:var(--navy-2); background:#EEF1F7; padding:3px 8px; border-radius:6px; display:inline-block; line-height:1.3;}
+  .kode-chip{
+    font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:600; padding:2px 6px;
+    border-radius:5px; background:var(--navy); color:#fff; display:inline-block; margin-bottom:4px;
+  }
+  .riwayat{display:flex; gap:2px; margin-top:6px;}
+  .riwayat .dot{width:7px;height:7px;border-radius:50%;background:#E7E2D2;}
+  .riwayat .dot.on{background:var(--green);}
+  .riwayat .dot.onproc{background:var(--amber);}
+  .riwayat .dot.cur{outline:2px solid var(--navy); outline-offset:1px;}
+
+  footer.note{
+    margin-top:22px; padding:16px 20px; border-radius:var(--radius);
+    background:#FBF7E9; border:1px solid var(--gold-soft); font-size:12.5px; color:#5B4E20; line-height:1.6;
+  }
+  footer.note strong{color:#4A3E14;}
+
+  @media (max-width:900px){
+    .kpis{grid-template-columns:repeat(3,1fr);}
+    .charts{grid-template-columns:1fr;}
+    header.top{flex-direction:column;}
+    .month-select{align-items:flex-start;}
+  }
+  @media (max-width:560px){
+    .kpis{grid-template-columns:repeat(2,1fr);}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <p class="eyebrow">Pusbin JFPM · Rencana Kerja &amp; Target Prioritas 2026</p>
+      <h1>Dashboard Pemantauan Pembangunan<br>Zona Integritas Menuju WBK</h1>
+      <p class="desc">Memantau progres realisasi seluruh kegiatan prioritas pada 6 pengungkit ZI-WBK, dari Mei 2026 sampai Juli 2027.</p>
+    </div>
+    <div>
+      <div class="month-select">
+        <label for="monthPicker">Bulan Pemantauan</label>
+        <div class="month-nav">
+          <button id="prevMonth" aria-label="Bulan sebelumnya">‹</button>
+          <select id="monthPicker"></select>
+          <button id="nextMonth" aria-label="Bulan berikutnya">›</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="peng-strip" id="pengStrip"></div>
+  </header>
+
+  <section class="kpis" id="kpiRow"></section>
+
+  <section class="charts">
+    <div class="panel">
+      <h3 id="doughnutTitle">Komposisi Status</h3>
+      <p class="sub" id="doughnutSub">Selesai vs. Belum pada bulan terpilih</p>
+      <canvas id="doughnutChart" height="230"></canvas>
+    </div>
+    <div class="panel">
+      <h3>Progres per Pengungkit</h3>
+      <p class="sub">Jumlah kegiatan selesai dibanding total kegiatan tiap pengungkit ZI-WBK</p>
+      <canvas id="barChart" height="230"></canvas>
+    </div>
+  </section>
+
+  <div class="filters">
+    <input type="text" id="searchBox" placeholder="Cari kegiatan…">
+    <select class="f" id="pengFilter"><option value="">Semua Pengungkit</option></select>
+    <select class="f" id="aspekFilter"><option value="">Semua Aspek</option></select>
+    <select class="f" id="komponenFilter"><option value="">Semua Komponen</option></select>
+    <select class="f" id="picFilter"><option value="">Semua PIC</option></select>
+    <select class="f" id="statusFilter">
+      <option value="">Semua Status</option>
+      <option value="Selesai">Selesai</option>
+      <option value="On Process">On Process</option>
+      <option value="Belum">Belum</option>
+    </select>
+  </div>
+  <p class="result-count" id="resultCount"></p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:40px;">No</th>
+          <th style="width:170px;">Pengungkit / Komponen</th>
+          <th>Kegiatan &amp; Riwayat (Mei'26–Jul'27)</th>
+          <th style="width:95px;">Waktu</th>
+          <th style="width:90px;">Status</th>
+          <th style="width:170px;">Progres Tindak Lanjut Rekomendasi</th>
+          <th style="width:190px;">Keterangan / Kendala</th>
+          <th style="width:190px;">Rekomendasi</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <footer class="note">
+    <strong>Sumber data:</strong> Dashboard ini mengambil data langsung (real-time) dari Google Sheets "Rencana Kerja dan Target Prioritas ZI WBK Pusbin JFPM" — <span id="totalRowsNote"></span> kegiatan pada 6 pengungkit (Manajemen Perubahan, Penataan Tatalaksana, Penataan Manajemen SDM, Penguatan Akuntabilitas Kinerja, Penguatan Pengawasan, Peningkatan Kualitas Pelayanan Publik), dengan progres bulanan Mei 2026–Juli 2027. Titik-titik kecil pada tiap baris menunjukkan riwayat status per bulan (hijau = Selesai, kuning = On Process, abu-abu = Belum). Kolom Keterangan/Kendala, Rekomendasi, dan Progres Tindak Lanjut Rekomendasi mengikuti bulan yang sedang dipilih. Setiap kali Google Sheet diupdate (kolom "Progres Rencana Kerja" diisi "Selesai"/"On Process"/"Belum"), dashboard ini akan otomatis menampilkan data terbaru saat halaman dimuat ulang.
+  </footer>
+
+</div>
+
+<script>
+// ====== KONFIGURASI GOOGLE SHEETS ======
+// 1. Ganti SPREADSHEET_ID di bawah ini dengan ID spreadsheet Anda
+//    (ambil dari URL: docs.google.com/spreadsheets/d/ID_INI/edit — BUKAN angka setelah gid=)
+// 2. Pastikan sheet sudah di-share "Anyone with the link can view"
+// 3. SHEET_GID = angka setelah "gid=" di URL Anda (ID tab). Nama tabnya akan dicari otomatis.
+const SPREADSHEET_ID = '1qPOCXbYk_orELwhCHpdBlXADSCAiwW24-VTm6hVXvro';
+const SHEET_GID = 976598562;
+const API_KEY = 'AIzaSyDKz14PLCPWO97tSavAlodQ9XJPS5vcd7Q';
+
+// Kolom "Progres Rencana Kerja" tiap bulan (index 0-based dihitung dari kolom A)
+// M=12, Q=16, U=20, Y=24, AC=28, AG=32, AK=36, AO=40, AS=44, AW=48, BA=52, BE=56, BI=60, BM=64, BQ=68
+const MONTH_COLS = [12,16,20,24,28,32,36,40,44,48,52,56,60,64,68];
+
+const MONTHS = ["Mei 2026","Jun 2026","Jul 2026","Agu 2026","Sep 2026","Okt 2026","Nov 2026","Des 2026","Jan 2027","Feb 2027","Mar 2027","Apr 2027","Mei 2027","Jun 2027","Jul 2027"];
+
+let DATA = [];
+let currentMonthIdx = MONTHS.indexOf("Jul 2026");
+if(currentMonthIdx < 0) currentMonthIdx = 0;
+let currentPeng = "";
+let doughnutChart, barChart;
+
+let PENG_LIST = [];
+const PENG_SHORT = {
+  "Manajemen Perubahan":"Manajemen\nPerubahan",
+  "Penataan Tatalaksana":"Penataan\nTatalaksana",
+  "Penataan Manajemen SDM":"Manajemen\nSDM",
+  "Penguatan Akuntabilitas Kinerja":"Akuntabilitas\nKinerja",
+  "Penguatan Pengawasan":"Penguatan\nPengawasan",
+  "Peningkatan Kualitas Pelayanan Publik":"Kualitas\nPelayanan Publik"
+};
+
+function statusAt(row, idx){ return row.s[idx] || 'Belum'; }
+function isDone(row, idx){ return statusAt(row, idx) === 'Selesai'; }
+function isOnProcess(row, idx){ return statusAt(row, idx) === 'On Process'; }
+
+function filteredByPeng(peng){
+  return peng ? DATA.filter(d=>d.peng===peng) : DATA;
+}
+
+function computeStats(monthIdx, peng){
+  const set = filteredByPeng(peng);
+  const total = set.length;
+  const selesai = set.filter(d=>isDone(d, monthIdx)).length;
+  const proses = set.filter(d=>isOnProcess(d, monthIdx)).length;
+  const belum = total - selesai - proses;
+  return {total, selesai, proses, belum, pct: total? Math.round((selesai/total)*100):0};
+}
+
+function populateMonthPicker(){
+  const sel = document.getElementById('monthPicker');
+  sel.innerHTML = MONTHS.map((m,i)=>`<option value="${i}">${m}</option>`).join('');
+  sel.value = currentMonthIdx;
+}
+
+function renderPengStrip(){
+  const el = document.getElementById('pengStrip');
+  el.innerHTML = "";
+  const allNode = document.createElement('div');
+  const sAll = computeStats(currentMonthIdx, "");
+  allNode.className = 'peng-node' + (currentPeng===""?' active':'');
+  allNode.innerHTML = `<div class="pn-label">Semua Pengungkit</div>
+    <div class="pn-pct">${sAll.pct}%</div>
+    <div class="pn-bar"><div class="pn-fill" style="width:${sAll.pct}%"></div></div>`;
+  allNode.onclick = ()=>{ currentPeng=""; refreshAll(); };
+  el.appendChild(allNode);
+
+  PENG_LIST.forEach(p=>{
+    const s = computeStats(currentMonthIdx, p);
+    const node = document.createElement('div');
+    node.className = 'peng-node' + (currentPeng===p?' active':'');
+    node.innerHTML = `<div class="pn-label">${(PENG_SHORT[p]||p).replace('\\n','<br>')}</div>
+      <div class="pn-pct">${s.pct}%</div>
+      <div class="pn-bar"><div class="pn-fill" style="width:${s.pct}%"></div></div>`;
+    node.onclick = ()=>{ currentPeng = p; document.getElementById('pengFilter').value = p; refreshAll(); };
+    el.appendChild(node);
+  });
+}
+
+function renderKpis(){
+  const s = computeStats(currentMonthIdx, currentPeng);
+  document.getElementById('kpiRow').innerHTML = `
+    <div class="kpi total"><div class="k-label">Total Kegiatan</div><div class="k-value">${s.total}</div><div class="k-sub">${currentPeng||'Seluruh pengungkit'}</div></div>
+    <div class="kpi done"><div class="k-label">Selesai</div><div class="k-value">${s.selesai}</div><div class="k-sub">${MONTHS[currentMonthIdx]}</div></div>
+    <div class="kpi proses"><div class="k-label">On Process</div><div class="k-value">${s.proses}</div><div class="k-sub">Sedang berjalan</div></div>
+    <div class="kpi pending"><div class="k-label">Belum</div><div class="k-value">${s.belum}</div><div class="k-sub">Perlu tindak lanjut</div></div>
+    <div class="kpi pct"><div class="k-label">% Capaian</div><div class="k-value">${s.pct}%</div><div class="k-sub">dari target ${s.total} kegiatan</div></div>
+  `;
+}
+
+function renderCharts(){
+  const s = computeStats(currentMonthIdx, currentPeng);
+  document.getElementById('doughnutTitle').textContent = currentPeng ? `Komposisi — ${currentPeng}` : 'Komposisi Status';
+  document.getElementById('doughnutSub').textContent = `Selesai vs. Belum pada ${MONTHS[currentMonthIdx]}`;
+
+  if(doughnutChart) doughnutChart.destroy();
+  doughnutChart = new Chart(document.getElementById('doughnutChart'), {
+    type:'doughnut',
+    data:{ labels:['Selesai','On Process','Belum'], datasets:[{ data:[s.selesai, s.proses, s.belum], backgroundColor:['#2E8B57','#C9A227','#B23A3A'], borderWidth:0 }] },
+    options:{ cutout:'68%', plugins:{ legend:{ position:'bottom', labels:{ font:{family:'Inter', size:12} } } } }
+  });
+
+  const bd = PENG_LIST.map(p=>computeStats(currentMonthIdx, p));
+  if(barChart) barChart.destroy();
+  barChart = new Chart(document.getElementById('barChart'), {
+    type:'bar',
+    data:{
+      labels: PENG_LIST.map(p=>PENG_SHORT[p]||p),
+      datasets:[
+        { label:'Selesai', data: bd.map(b=>b.selesai), backgroundColor:'#2E8B57', borderRadius:6, maxBarThickness:34 },
+        { label:'On Process', data: bd.map(b=>b.proses), backgroundColor:'#C9A227', borderRadius:6, maxBarThickness:34 },
+        { label:'Belum', data: bd.map(b=>b.belum), backgroundColor:'#B23A3A', borderRadius:6, maxBarThickness:34 }
+      ]
+    },
+    options:{
+      responsive:true,
+      scales:{ x:{ stacked:true, grid:{display:false}, ticks:{font:{size:10.5}} }, y:{ stacked:true, grid:{color:'#EFEDE6'} } },
+      plugins:{ legend:{ position:'bottom', labels:{font:{family:'Inter', size:12}} } }
+    }
+  });
+}
+
+function populateFilters(){
+  const pf = document.getElementById('pengFilter');
+  pf.innerHTML = '<option value="">Semua Pengungkit</option>' + PENG_LIST.map(p=>`<option value="${p}">${p}</option>`).join('');
+  const aspekSet = [...new Set(DATA.map(d=>d.aspek).filter(Boolean))].sort();
+  const af = document.getElementById('aspekFilter');
+  af.innerHTML = '<option value="">Semua Aspek</option>' + aspekSet.map(a=>`<option value="${a}">${a}</option>`).join('');
+  updateKomponenFilter();
+  const picSet = [...new Set(DATA.map(d=>d.pic))].sort();
+  const picf = document.getElementById('picFilter');
+  picf.innerHTML = '<option value="">Semua PIC</option>' + picSet.map(p=>`<option value="${p}">${p}</option>`).join('');
+}
+
+function updateKomponenFilter(){
+  const kf = document.getElementById('komponenFilter');
+  const set = filteredByPeng(currentPeng);
+  const komponenSet = [...new Set(set.map(d=>d.komp))].sort();
+  const prev = kf.value;
+  kf.innerHTML = '<option value="">Semua Komponen</option>' + komponenSet.map(k=>`<option value="${k}">${k}</option>`).join('');
+  if(komponenSet.includes(prev)) kf.value = prev;
+}
+
+function renderTable(){
+  const search = document.getElementById('searchBox').value.toLowerCase();
+  const pengF = document.getElementById('pengFilter').value;
+  const aspekF = document.getElementById('aspekFilter').value;
+  const komponenF = document.getElementById('komponenFilter').value;
+  const picF = document.getElementById('picFilter').value;
+  const statusF = document.getElementById('statusFilter').value;
+
+  const rows = DATA.filter(d=>{
+    if(search && !d.keg.toLowerCase().includes(search)) return false;
+    if(pengF && d.peng !== pengF) return false;
+    if(aspekF && d.aspek !== aspekF) return false;
+    if(komponenF && d.komp !== komponenF) return false;
+    if(picF && d.pic !== picF) return false;
+    if(statusF){ const cur = statusAt(d,currentMonthIdx); if(cur !== statusF) return false; }
+    return true;
+  });
+
+  document.getElementById('resultCount').textContent = `Menampilkan ${rows.length} dari ${DATA.length} kegiatan`;
+
+  document.getElementById('tableBody').innerHTML = rows.map(d=>{
+    const dots = d.s.map((st,i)=>{
+      const cls = st==='Selesai' ? 'on' : (st==='On Process' ? 'onproc' : '');
+      return `<span class="dot ${cls} ${i===currentMonthIdx?'cur':''}" title="${MONTHS[i]}: ${st}"></span>`;
+    }).join('');
+    const cur = statusAt(d,currentMonthIdx);
+    const badgeClass = cur==='Selesai' ? 'selesai' : (cur==='On Process' ? 'proses' : 'belum');
+    const ket = d.ket[currentMonthIdx];
+    const rek = d.rek[currentMonthIdx];
+    const tindak = d.tindak[currentMonthIdx];
+    const tindakBadgeClass = tindak==='Selesai' ? 'selesai' : (tindak==='On Process' ? 'proses' : (tindak==='Tidak Ada' ? 'tidakada' : 'belum'));
+    return `<tr>
+      <td class="no-col">${d.no ?? ''}</td>
+      <td><span class="kode-chip">${d.kode||''}</span><div class="komponen-tag">${d.komp}</div></td>
+      <td class="kegiatan-col">${d.keg}<div class="riwayat">${dots}</div></td>
+      <td>${d.waktu}</td>
+      <td><span class="badge ${badgeClass}">${cur}</span></td>
+      <td class="tindak-col"><span class="badge ${tindakBadgeClass}">${tindak}</span></td>
+      <td class="ket-col">${ket ? ket : '<span class="empty">—</span>'}</td>
+      <td class="rek-col">${rek ? rek : '<span class="empty">—</span>'}</td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="8" style="text-align:center;color:var(--ink-soft);padding:24px;">Tidak ada kegiatan yang cocok dengan filter.</td></tr>`;
+}
+
+function refreshAll(){
+  renderPengStrip();
+  renderKpis();
+  renderCharts();
+  updateKomponenFilter();
+  renderTable();
+}
+
+// ====== AMBIL DATA DARI GOOGLE SHEETS ======
+async function resolveSheetName(){
+  const metaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?key=${API_KEY}&fields=sheets.properties`;
+  const res = await fetch(metaUrl);
+  if(!res.ok){
+    let msg = `HTTP ${res.status}`;
+    try{ const j = await res.json(); if(j?.error?.message) msg = j.error.message; }catch(e){}
+    throw new Error(`Gagal membaca daftar tab — ${msg}`);
+  }
+  const json = await res.json();
+  const sheet = (json.sheets || []).find(s => s.properties.sheetId === SHEET_GID);
+  if(!sheet) throw new Error(`Tab dengan gid=${SHEET_GID} tidak ditemukan di spreadsheet ini.`);
+  return sheet.properties.title;
+}
+
+async function loadDataFromSheet(){
+  const sheetName = await resolveSheetName();
+  const range = `${sheetName}!A5:BQ`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(range)}?key=${API_KEY}`;
+  const res = await fetch(url);
+  if(!res.ok){
+    let msg = `HTTP ${res.status}`;
+    try{ const j = await res.json(); if(j?.error?.message) msg = j.error.message; }catch(e){}
+    throw new Error(msg);
+  }
+  const json = await res.json();
+  const rows = json.values || [];
+
+  // Kolom Pengungkit/Kode/Aspek/Komponen sering di-merge di Google Sheets untuk beberapa
+  // baris sekaligus — API hanya mengembalikan isi pada baris pertama tiap grup merge,
+  // baris lain kosong. Maka nilainya "diteruskan" (forward-fill) dari baris terakhir yang terisi.
+  let lastPeng = '', lastKode = '', lastAspek = '', lastKomp = '';
+  DATA = [];
+  for(const r of rows){
+    if(r[0] && String(r[0]).trim() !== '') lastPeng = r[0];
+    if(r[1] && String(r[1]).trim() !== '') lastKode = r[1];
+    if(r[2] && String(r[2]).trim() !== '') lastAspek = r[2];
+    if(r[3] && String(r[3]).trim() !== '') lastKomp = r[3];
+
+    const keg = r[5] || '';
+    if(!String(keg).trim()) continue; // baris tanpa Kegiatan dianggap baris kosong, dilewati
+
+    DATA.push({
+      peng:  lastPeng,
+      kode:  lastKode,
+      aspek: lastAspek,
+      komp:  lastKomp,
+      no:    r[4]  || '',
+      keg:   keg,
+      waktu: r[6]  || '',
+      pic:   r[9]  || '',
+      target: r[10] || null,
+      // Tiap bulan = blok 4 kolom (urutan baru): [Progres Tindak Lanjut Rekomendasi, Progres Rencana Kerja, Keterangan/Kendala, Rekomendasi]
+      s:      MONTH_COLS.map(idx => (r[idx+1] && String(r[idx+1]).trim()) || 'Belum'),
+      ket:    MONTH_COLS.map(idx => (r[idx+2] && String(r[idx+2]).trim()) || ''),
+      rek:    MONTH_COLS.map(idx => (r[idx+3] && String(r[idx+3]).trim()) || ''),
+      tindak: MONTH_COLS.map(idx => (r[idx]   && String(r[idx]).trim())   || 'Belum')
+    });
+  }
+
+  PENG_LIST = [...new Set(DATA.map(d=>d.peng))];
+}
+
+function showLoading(){
+  document.getElementById('tableBody').innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--ink-soft);padding:24px;">Memuat data dari Google Sheets…</td></tr>`;
+}
+
+function showError(message){
+  document.getElementById('tableBody').innerHTML = `<tr><td colspan="8" style="text-align:center;color:#B9862F;padding:24px;">Gagal memuat data dari Google Sheets: ${message}<br><span style="font-size:11px;color:var(--ink-soft);">Periksa SPREADSHEET_ID, SHEET_GID, dan pastikan sheet sudah di-share "Anyone with the link can view".</span></td></tr>`;
+}
+
+function attachEvents(){
+  document.getElementById('monthPicker').addEventListener('change', e=>{ currentMonthIdx = parseInt(e.target.value); refreshAll(); });
+  document.getElementById('prevMonth').addEventListener('click', ()=>{ if(currentMonthIdx>0){ currentMonthIdx--; document.getElementById('monthPicker').value=currentMonthIdx; refreshAll(); }});
+  document.getElementById('nextMonth').addEventListener('click', ()=>{ if(currentMonthIdx<MONTHS.length-1){ currentMonthIdx++; document.getElementById('monthPicker').value=currentMonthIdx; refreshAll(); }});
+  document.getElementById('searchBox').addEventListener('input', renderTable);
+  document.getElementById('pengFilter').addEventListener('change', e=>{ currentPeng = e.target.value; refreshAll(); });
+  ['komponenFilter','picFilter','statusFilter','aspekFilter'].forEach(id=>document.getElementById(id).addEventListener('change', renderTable));
+}
+
+async function init(){
+  showLoading();
+  try{
+    await loadDataFromSheet();
+    document.getElementById('totalRowsNote').textContent = DATA.length;
+    populateMonthPicker();
+    populateFilters();
+    refreshAll();
+    attachEvents();
+  }catch(err){
+    console.error(err);
+    showError(err.message);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
